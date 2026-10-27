@@ -1,39 +1,26 @@
-# TryHackMe – Flip  
-## AES-CBC Bit Flipping Attack
+# TryHackMe: Flip
 
-This repository documents the exploitation of a vulnerable authentication service that incorrectly used **AES encryption in CBC mode** without integrity protection.
+A challenge-specific Python script for the *Flip* lab. The service returns an AES-CBC ciphertext and later accepts a ciphertext for authentication without checking its integrity. The script changes one ciphertext byte before sending it back.
 
-The goal of the challenge was to authenticate as an **administrator** by manipulating encrypted data returned by the server.
+## How the script works
 
----
+1. Connects to the configured host on port `1337`.
+2. Sends the username and password bytes expected by this challenge.
+3. Reads the line labelled `Leaked ciphertext` from the service response.
+4. Applies `ct[15] ^= ord('t') ^ ord('s')` and submits the modified ciphertext.
 
-# Challenge Summary
+In CBC decryption, a byte changed in the previous ciphertext block changes the corresponding byte in the next plaintext block. The XOR expression above is the difference between `t` and `s`. It depends on the exact plaintext layout used by this lab; changing the username, password, or server format can make byte 15 the wrong position.
 
-The service accepts:
+## Run in the lab
 
-- a username
-- a password
+Edit `HOST` in [`flip.py`](flip.py) to the address of your own TryHackMe instance, then run:
 
-It then:
+```bash
+python flip.py
+```
 
-1. encrypts the data using AES-CBC
-2. leaks the ciphertext
-3. asks the user to submit ciphertext back
-4. decrypts the provided ciphertext
-5. checks if the decrypted message contains admin credentials
+The script expects specific prompts and the exact `Leaked ciphertext:` label. It has no socket timeout, automated tests, or captured successful run in this repository. It is a proof of concept for this exercise, not a general AES-CBC attack tool.
 
-Because CBC encryption **does not guarantee integrity**, attackers can modify ciphertext and control parts of the decrypted plaintext.
+## Takeaway
 
-This allows bypassing authentication.
-
----
-
-# Vulnerable Logic
-
-The server decrypts attacker-supplied ciphertext and checks for the presence of a specific credential string.
-
-Example logic:
-
-```python
-if b'admin&password=...' in decrypted_data:
-    grant_access()
+Encryption alone does not authenticate a message. A service must reject modified ciphertext before using decrypted data for an authorization decision.
