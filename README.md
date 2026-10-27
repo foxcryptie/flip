@@ -1,39 +1,15 @@
-# TryHackMe – Flip  
-## AES-CBC Bit Flipping Attack
+# Flip (TryHackMe)
 
-This repository documents the exploitation of a vulnerable authentication service that incorrectly used **AES encryption in CBC mode** without integrity protection.
+`flip.py` is a one-off script for the Flip room. It connects to the lab service, sends the two input lines expected by that service, reads its leaked AES-CBC ciphertext, changes one byte, and sends the ciphertext back.
 
-The goal of the challenge was to authenticate as an **administrator** by manipulating encrypted data returned by the server.
-
----
-
-# Challenge Summary
-
-The service accepts:
-
-- a username
-- a password
-
-It then:
-
-1. encrypts the data using AES-CBC
-2. leaks the ciphertext
-3. asks the user to submit ciphertext back
-4. decrypts the provided ciphertext
-5. checks if the decrypted message contains admin credentials
-
-Because CBC encryption **does not guarantee integrity**, attackers can modify ciphertext and control parts of the decrypted plaintext.
-
-This allows bypassing authentication.
-
----
-
-# Vulnerable Logic
-
-The server decrypts attacker-supplied ciphertext and checks for the presence of a specific credential string.
-
-Example logic:
+The change is here:
 
 ```python
-if b'admin&password=...' in decrypted_data:
-    grant_access()
+ct[15] ^= ord('t') ^ ord('s')
+```
+
+CBC decryption XORs each plaintext block with the previous ciphertext block. The expression above applies the difference between `t` and `s` to one plaintext byte. Byte 15 is hardcoded because the room's message layout is hardcoded; this script will not find the right position for a different message or service.
+
+Set `HOST` in [`flip.py`](flip.py) to your own room instance and run `python flip.py`. The parser expects the exact `Leaked ciphertext:` text and the prompts used by the room. There are no automated tests or saved run output here.
+
+The lesson from the room is about integrity: encrypting login data with CBC does not stop someone from changing it before the server makes an authorization decision.
