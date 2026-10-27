@@ -1,26 +1,15 @@
-# TryHackMe: Flip
+# Flip (TryHackMe)
 
-A challenge-specific Python script for the *Flip* lab. The service returns an AES-CBC ciphertext and later accepts a ciphertext for authentication without checking its integrity. The script changes one ciphertext byte before sending it back.
+`flip.py` is a one-off script for the Flip room. It connects to the lab service, sends the two input lines expected by that service, reads its leaked AES-CBC ciphertext, changes one byte, and sends the ciphertext back.
 
-## How the script works
+The change is here:
 
-1. Connects to the configured host on port `1337`.
-2. Sends the username and password bytes expected by this challenge.
-3. Reads the line labelled `Leaked ciphertext` from the service response.
-4. Applies `ct[15] ^= ord('t') ^ ord('s')` and submits the modified ciphertext.
-
-In CBC decryption, a byte changed in the previous ciphertext block changes the corresponding byte in the next plaintext block. The XOR expression above is the difference between `t` and `s`. It depends on the exact plaintext layout used by this lab; changing the username, password, or server format can make byte 15 the wrong position.
-
-## Run in the lab
-
-Edit `HOST` in [`flip.py`](flip.py) to the address of your own TryHackMe instance, then run:
-
-```bash
-python flip.py
+```python
+ct[15] ^= ord('t') ^ ord('s')
 ```
 
-The script expects specific prompts and the exact `Leaked ciphertext:` label. It has no socket timeout, automated tests, or captured successful run in this repository. It is a proof of concept for this exercise, not a general AES-CBC attack tool.
+CBC decryption XORs each plaintext block with the previous ciphertext block. The expression above applies the difference between `t` and `s` to one plaintext byte. Byte 15 is hardcoded because the room's message layout is hardcoded; this script will not find the right position for a different message or service.
 
-## Takeaway
+Set `HOST` in [`flip.py`](flip.py) to your own room instance and run `python flip.py`. The parser expects the exact `Leaked ciphertext:` text and the prompts used by the room. There are no automated tests or saved run output here.
 
-Encryption alone does not authenticate a message. A service must reject modified ciphertext before using decrypted data for an authorization decision.
+The lesson from the room is about integrity: encrypting login data with CBC does not stop someone from changing it before the server makes an authorization decision.
